@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 // Imports
 const chalk = require('chalk');
 const childProcess = require('child_process');
@@ -27,7 +29,7 @@ const nginxPathEnabled = path.join(nginxPath, 'sites-enabled');
  */
 function testNginxConfig(){
 	return new Promise(resolve => {
-		console.log('nginxtools: Testing nginx configuration (nginx -t)...');
+		console.log('nginxtools: launching nginx -t...');
 		const sub = childProcess.spawn('nginx', ['-t']);
 		sub.stdout.on('data', (data)=>{
 			process.stdout.write(`${data}`);
@@ -45,28 +47,31 @@ function testNginxConfig(){
 }
 
 function listFiles(dir){
-	fs.readdir(dir, {withFileTypes: true}, (err, files)=>{
-		if(err){
-			console.error(err);
-			return [];
-		}
-		const res = [];
-		files.forEach(f => {
-			if(f.isFile() || f.isSymbolicLink()){
-				res.push(f.name);
+	return new Promise(resolve => {
+		fs.readdir(dir, {withFileTypes: true}, (err, files)=>{
+			if(err){
+				console.error(err);
+				resolve([]);
+				return;
 			}
+			const res = [];
+			files.forEach(f => {
+				if(f.isFile() || f.isSymbolicLink()){
+					res.push(f.name);
+				}
+			});
+			resolve(res);
 		});
-		return res;
 	});
 }
 
-function listConfigs(){
-	console.log('nginxtools: Listing configurations:');
-	const avail = listFiles(nginxPathAvailable);
-	const enabled = listFiles(nginxPathEnabled);
+async function listConfigs(){
+	console.log('nginxtools: listing configurations:');
+	const avail = await listFiles(nginxPathAvailable);
+	const enabled = await listFiles(nginxPathEnabled);
 	avail.forEach(f => {
 		if(enabled.includes(f)){
-			console.log(chalk.blue(`• ${f} (enabled)`));
+			console.log(chalk.cyan(`• ${f} (enabled)`));
 		}
 		else {
 			console.log(`• ${f}`);
@@ -91,7 +96,6 @@ function disable(name){
 	}
 	else {
 		fs.unlinkSync(path.join(nginxPathEnabled, name));
-		console.log(`nginxtools: ${name} disabled.`);
 	}
 }
 
@@ -104,7 +108,6 @@ function enable(name){
 	}
 	else {
 		fs.symlinkSync(path.join(nginxPathAvailable, name), path.join(nginxPathEnabled, name));
-		console.log(`${name} enabled.`);
 	}
 }
 
@@ -140,7 +143,6 @@ function deleteProxy(name){
 		return;
 	}
 	fs.unlinkSync(path.join(nginxPathAvailable, name));
-	console.log(`nginxtools: deleted ${name} configuration.`);
 }
 
 program
