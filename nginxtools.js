@@ -118,17 +118,41 @@ function createProxy(domain, listeningPort, targetPort){
 	}
 
 	const template = `server {
-        listen ${listeningPort};
-        server_name ${domain};
-        access_log /var/log/nginx/${domain}_proxy.log;
-        location / {
-                proxy_pass http://127.0.0.1:${targetPort};
-                proxy_redirect off;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        }
-}`;
+	listen 443 ssl;
+	server_name ${domain};
+
+	ssl_certificate /path/to/cert.pem;
+	ssl_certificate_key /path/to/cert.key;
+	access_log /var/log/nginx/${domain}_proxy.log;
+
+	location / {
+		# Proxy
+		proxy_pass http://127.0.0.1:${targetPort};
+		proxy_redirect off;
+
+		# Headers
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+
+		# WebSockets
+		proxy_set_header Upgrade $http_upgrade;
+		proxy_set_header Connection "Upgrade";
+	}
+}
+
+server {
+	listen 80;
+
+    server_name ${domain};
+    if ($host = ${domain}) {
+        return 301 https://$host$request_uri;
+    }
+
+    return 404;
+}
+`;
 	fs.writeFileSync(path.join(nginxPathAvailable, domain), template);
 	console.log(`nginxtools: created ${domain}:${listeningPort} => 127.0.0.1:${targetPort}.`);
 	enable(domain);

@@ -8,10 +8,19 @@
     },
     "license": "MIT",
     "dependencies": {
-        "chalk": "^5.0.0",
+        "colors": "^1.4.0",
         "commander": "^8.3.0"
     },
     "bin": {
         "nginxtools": "./nginxtools.js"
+    },
+    "files": [
+		"LICENCE",
+		"README.md",
+		"build/**/*",
+		"bin/nginxtools"
+	],
+    "devDependencies": {
+        "@types/node": "^17.0.2"
     }
 }
